@@ -11,7 +11,7 @@ import 'add_announcement_screen.dart';
 
 class AdminHomeScreen extends StatefulWidget {
   final User user;
-  
+
   const AdminHomeScreen({
     super.key,
     required this.user,
@@ -22,11 +22,10 @@ class AdminHomeScreen extends StatefulWidget {
 }
 
 class _AdminHomeScreenState extends State<AdminHomeScreen> with SingleTickerProviderStateMixin {
-  // Use provider to access the auth service
   MockAuthService get _authService => Provider.of<MockAuthService>(context, listen: false);
-  
+
   late TabController _tabController;
-  
+
   @override
   void initState() {
     super.initState();
@@ -37,21 +36,20 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> with SingleTickerProv
       }
     });
   }
-  
+
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
   }
-  
+
   Future<void> _handleLogout() async {
-    // Show confirmation dialog
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(
-          'Confirm Logout', 
-          style: GoogleFonts.poppins(fontWeight: FontWeight.bold)
+          'Confirm Logout',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
         ),
         content: Text(
           'Are you sure you want to logout?',
@@ -86,9 +84,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> with SingleTickerProv
         ],
       ),
     );
-    
+
     if (confirmed != true) return;
-    
+
     try {
       await _authService.signOut();
       if (mounted) {
@@ -112,10 +110,14 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> with SingleTickerProv
 
   String _getTabTitle() {
     switch (_tabController.index) {
-      case 0: return 'User Management';
-      case 1: return 'Announcements';
-      case 2: return 'Admin Profile';
-      default: return 'Admin Dashboard';
+      case 0:
+        return 'User Management';
+      case 1:
+        return 'Announcements';
+      case 2:
+        return 'Admin Profile';
+      default:
+        return 'Admin Dashboard';
     }
   }
 
@@ -129,7 +131,7 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> with SingleTickerProv
               expandedHeight: 160.0,
               floating: false,
               pinned: true,
-              backgroundColor: Colors.indigo[800],
+              backgroundColor: Colors.purple,
               elevation: 8,
               forceElevated: innerBoxIsScrolled,
               shape: const RoundedRectangleBorder(
@@ -158,9 +160,9 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> with SingleTickerProv
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            Colors.indigo.shade900,
-                            Colors.deepPurple.shade800,
+                            Colors.purple.shade900,
                             Colors.purple.shade800,
+                            Colors.purple.shade700,
                           ],
                         ),
                         borderRadius: const BorderRadius.only(
@@ -238,7 +240,8 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> with SingleTickerProv
                     labelColor: Colors.white,
                     unselectedLabelColor: Colors.white.withOpacity(0.7),
                     labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 13),
-                    unselectedLabelStyle: GoogleFonts.poppins(fontWeight: FontWeight.normal, fontSize: 13),
+                    unselectedLabelStyle:
+                        GoogleFonts.poppins(fontWeight: FontWeight.normal, fontSize: 13),
                     dividerColor: Colors.transparent,
                     labelPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                     isScrollable: false,
@@ -330,57 +333,47 @@ class _AdminHomeScreenState extends State<AdminHomeScreen> with SingleTickerProv
           child: TabBarView(
             controller: _tabController,
             children: [
-              // Users Tab
               AdminUsersTab(adminUser: widget.user),
-              
-              // Announcements Tab
-              AdminAnnouncementsTab(adminUser: widget.user),
-              
-              // Profile Tab
+              AdminAnnouncementsTab(user: widget.user), // Ganti adminUser menjadi user
               AdminProfileTab(user: widget.user, onLogout: _handleLogout),
             ],
           ),
         ),
       ),
-      floatingActionButton: _tabController.index == 2 ? null : FloatingActionButton.extended(
-        onPressed: () {
-          // Add action based on current tab
-          switch (_tabController.index) {
-            case 0: // Users tab
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const AddUserScreen(),
-                ),
-              );
-              break;
-            case 1: // Announcements tab
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => AddAnnouncementScreen(currentUser: widget.user),
-                ),
-              );
-              break;
-          }
-        },
-        icon: Icon(_tabController.index == 0 ? Icons.person_add : Icons.post_add),
-        label: Text(
-          _tabController.index == 0 ? 'Add User' : 'New Announcement',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w500,
-            letterSpacing: 0.5,
-          ),
-        ),
-        backgroundColor: _tabController.index == 0 
-            ? Colors.indigo[700] 
-            : Colors.purple[700],
-        elevation: 8,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
-        extendedPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      ),
+      floatingActionButton: _tabController.index == 2
+          ? null
+          : FloatingActionButton(
+              onPressed: () {
+                switch (_tabController.index) {
+                  case 0:
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AddUserScreen(),
+                      ),
+                    );
+                    break;
+                  case 1:
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AddAnnouncementScreen(currentUser: widget.user),
+                      ),
+                    ).then((value) {
+                      if (value == true) {
+                        setState(() {});
+                      }
+                    });
+                    break;
+                }
+              },
+              backgroundColor: Colors.purple,
+              child: Icon(
+                _tabController.index == 0 ? Icons.person_add : Icons.post_add,
+                color: Colors.white,
+              ),
+              tooltip: _tabController.index == 0 ? 'Add User' : 'New Announcement',
+            ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }

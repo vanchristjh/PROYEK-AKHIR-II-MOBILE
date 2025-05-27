@@ -1,4 +1,9 @@
-import 'package:intl/intl.dart';
+enum AttendanceStatus {
+  present,
+  absent,
+  late,
+  excused,
+}
 
 class Attendance {
   final String id;
@@ -22,7 +27,7 @@ class Attendance {
       id: map['id'],
       userId: map['userId'],
       userName: map['userName'],
-      date: (map['date'] as Timestamp).toDate(),
+      date: DateTime.parse(map['date']),
       status: AttendanceStatus.values.firstWhere(
         (status) => status.toString() == 'AttendanceStatus.${map['status']}',
       ),
@@ -35,28 +40,9 @@ class Attendance {
       'id': id,
       'userId': userId,
       'userName': userName,
-      'date': date,
+      'date': date.toIso8601String(),
       'status': status.toString().split('.').last,
       'note': note,
     };
   }
-
-  String get formattedDate {
-    return DateFormat('dd MMMM yyyy').format(date);
-  }
-}
-
-enum AttendanceStatus {
-  present,
-  absent,
-  late,
-  excused,
-}
-
-class Timestamp {
-  final DateTime _dateTime;
-  
-  Timestamp(this._dateTime);
-
-  DateTime toDate() => _dateTime;
 }

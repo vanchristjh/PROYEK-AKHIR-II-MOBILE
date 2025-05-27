@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "sman1_application" "\0"
+            VALUE "FileDescription", "sma_girsip" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "sman1_application" "\0"
+            VALUE "InternalName", "sma_girsip" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2025 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "sman1_application.exe" "\0"
-            VALUE "ProductName", "sman1_application" "\0"
+            VALUE "OriginalFilename", "sma_girsip.exe" "\0"
+            VALUE "ProductName", "sma_girsip" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

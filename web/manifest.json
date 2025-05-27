@@ -1,6 +1,6 @@
 {
-    "name": "sman1_application",
-    "short_name": "sman1_application",
+    "name": "sma_girsip",
+    "short_name": "sma_girsip",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

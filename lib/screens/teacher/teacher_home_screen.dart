@@ -1,265 +1,493 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../../models/user.dart';
+import '../../models/announcement.dart';
 import '../../services/auth_service.dart';
-import 'tabs/teacher_attendance_tab.dart';
-import 'tabs/teacher_announcements_tab.dart';
-import 'tabs/teacher_schedule_tab.dart';
-import 'tabs/teacher_profile_tab.dart';
+import '../../services/announcement_service.dart';
+import '../admin/add_announcement_screen.dart';
 
 class TeacherHomeScreen extends StatefulWidget {
   final User user;
-  
-  const TeacherHomeScreen({
-    super.key,
-    required this.user,
-  });
+
+  const TeacherHomeScreen({super.key, required this.user});
 
   @override
   State<TeacherHomeScreen> createState() => _TeacherHomeScreenState();
 }
 
 class _TeacherHomeScreenState extends State<TeacherHomeScreen> {
-  int _currentIndex = 0;
-  
-  // Use provider to access the auth service  
-  MockAuthService get _authService => Provider.of<MockAuthService>(context, listen: false);
-  
-  late final List<Widget> _tabs;
-  
+  final MockAnnouncementService _announcementService = MockAnnouncementService();
+  List<Announcement> _announcements = [];
+
   @override
   void initState() {
     super.initState();
-    _tabs = [
-      TeacherAnnouncementsTab(user: widget.user),
-      TeacherAttendanceTab(user: widget.user),
-      TeacherScheduleTab(user: widget.user),
-      TeacherProfileTab(user: widget.user, onLogout: _handleLogout),
-    ];
+    _loadAnnouncements();
   }
-  
-  Future<void> _handleLogout() async {
-    // Show confirmation dialog
-    final confirmed = await showDialog<bool>(
+
+  Future<void> _loadAnnouncements() async {
+    final announcements = await _announcementService.getUserAnnouncements(
+      widget.user.id,
+      widget.user.role.toString().split('.').last,
+      widget.user.classId,
+    );
+    setState(() {
+      _announcements = announcements;
+    });
+  }
+
+  void _showProfileDialog(MockAuthService authService) {
+    showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'Konfirmasi Logout',
-          style: GoogleFonts.poppins(fontWeight: FontWeight.bold)
-        ),
-        content: Text(
-          'Apakah Anda yakin ingin keluar?',
-          style: GoogleFonts.poppins(),
-        ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.grey[800],
-            ),
-            child: Text('Batal', style: GoogleFonts.poppins()),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red[700],
-              foregroundColor: Colors.white,
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: FutureBuilder<User?>(
+          future: authService.currentUser,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final user = snapshot.data ?? widget.user;
+            return SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(12),
+                        topRight: Radius.circular(12),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        const Text(
+                          'Profil Guru',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        CircleAvatar(
+                          radius: 40,
+                          backgroundColor: Colors.white,
+                          child: Text(
+                            user.name[0],
+                            style: const TextStyle(
+                              fontSize: 40,
+                              color: Colors.blue,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          user.name,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          user.email,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Card(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          elevation: 2,
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Informasi Guru',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                _buildInfoItem(
+                                  icon: Icons.schedule,
+                                  label: 'Total Schedules',
+                                  value: '10',
+                                ),
+                                _buildInfoItem(
+                                  icon: Icons.admin_panel_settings,
+                                  label: 'Role',
+                                  value: 'Guru',
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Navigasi ke Manage Schedule')),
+                                );
+                              },
+                              icon: const Icon(Icons.schedule),
+                              label: const Text('Manage Schedule'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            ElevatedButton(
+                              onPressed: () async {
+                                await authService.signOut();
+                                Navigator.pushReplacementNamed(context, '/login');
+                              },
+                              child: const Text('Logout'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ),
-            child: Text('Logout', style: GoogleFonts.poppins()),
-          ),
-        ],
+            );
+          },
+        ),
       ),
     );
-    
-    if (confirmed != true) return;
-    
-    try {
-      await _authService.signOut();
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/login');
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error logging out: $e'),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.red[700],
-          ),
-        );
-      }
-    }
   }
-  
-  String _getScreenTitle() {
-    switch (_currentIndex) {
-      case 0: return 'Informasi dan Pengumuman';
-      case 1: return 'Manajemen Absensi';
-      case 2: return 'Jadwal Mengajar';
-      case 3: return 'Profil Guru';
-      default: return 'SMAN 1 Teacher App';
-    }
-  }
-  
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBody: true,
-      appBar: AppBar(
-        elevation: 0,
-        title: Text(
-          _getScreenTitle(),
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
+    return Consumer<MockAuthService>(
+      builder: (context, authService, child) {
+        return Scaffold(
+          appBar: AppBar(
+            backgroundColor: Colors.blue,
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Selamat Datang, Guru',
+                  style: TextStyle(fontSize: 14, color: Colors.white70),
+                ),
+                Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: Colors.white,
+                      radius: 12,
+                      child: Text(
+                        widget.user.name[0],
+                        style: const TextStyle(color: Colors.blue, fontSize: 12),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      widget.user.name,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.notifications, color: Colors.white),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Notifications'),
+                      content: const Text('No new notifications.'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Close'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
-        ),
-        centerTitle: true,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.green.shade800,
-                Colors.green.shade600,
-                Colors.teal.shade500,
+          body: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Informasi Terbaru',
+                  style: GoogleFonts.poppins(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: _announcements.isEmpty
+                      ? Center(
+                          child: Text(
+                            'Belum ada pengumuman.',
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: _announcements.length,
+                          itemBuilder: (context, index) {
+                            final announcement = _announcements[index];
+                            return Column(
+                              children: [
+                                _buildInfoCard(
+                                  title: announcement.title,
+                                  date: DateFormat('dd MMMM yyyy, HH:mm').format(announcement.publishDate),
+                                  author: announcement.authorName,
+                                  content: announcement.content,
+                                  type: announcement.type,
+                                  targetAudience: announcement.targetAudience,
+                                  onTap: () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Detail: ${announcement.title}')),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 16),
+                              ],
+                            );
+                          },
+                        ),
+                ),
               ],
             ),
           ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.exit_to_app, color: Colors.white),
-            onPressed: _handleLogout,
-            tooltip: 'Logout',
-          ),
-          const SizedBox(width: 8),
-        ],
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-            bottom: Radius.circular(20),
-          ),
-        ),
-      ),
-      body: SafeArea(
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.grey.shade50,
-                Colors.grey.shade100,
-              ],
-            ),
-          ),
-          child: _tabs[_currentIndex],
-        ),
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, -1),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-          child: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: (index) {
-              setState(() {
-                _currentIndex = index;
+          // Tambahkan Floating Action Button untuk Tambah Pengumuman
+          floatingActionButton: FloatingActionButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AddAnnouncementScreen(currentUser: widget.user),
+                ),
+              ).then((value) {
+                if (value == true) {
+                  _loadAnnouncements();
+                }
               });
             },
-            type: BottomNavigationBarType.fixed,
-            backgroundColor: Colors.white,
-            selectedItemColor: Colors.green.shade700,
-            unselectedItemColor: Colors.grey.shade600,
-            selectedLabelStyle: GoogleFonts.poppins(
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
+            backgroundColor: Colors.blue,
+            child: const Icon(Icons.add, color: Colors.white),
+            tooltip: 'Tambah Pengumuman',
+          ),
+          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+          bottomNavigationBar: Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+            color: Colors.grey[100],
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text(
+                  'Profil',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.blue,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.person, color: Colors.blue),
+                  onPressed: () => _showProfileDialog(authService),
+                ),
+              ],
             ),
-            unselectedLabelStyle: GoogleFonts.poppins(
-              fontSize: 11,
-            ),
-            elevation: 20,
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.announcement_outlined),
-                activeIcon: Icon(Icons.announcement),
-                label: 'Pengumuman',
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildInfoCard({
+    required String title,
+    required String date,
+    required String author,
+    required String content,
+    required String type,
+    required List<String> targetAudience,
+    required VoidCallback onTap,
+  }) {
+    Color typeColor;
+    switch (type.toLowerCase()) {
+      case 'urgent':
+        typeColor = Colors.red;
+        break;
+      case 'important':
+        typeColor = Colors.orange;
+        break;
+      case 'event':
+        typeColor = Colors.green;
+        break;
+      case 'academic':
+      default:
+        typeColor = Colors.blue;
+        break;
+    }
+
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(
+                    child: Text(
+                      title,
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: typeColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      type.toUpperCase(),
+                      style: GoogleFonts.poppins(
+                        fontSize: 10,
+                        color: typeColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.how_to_reg_outlined),
-                activeIcon: Icon(Icons.how_to_reg),
-                label: 'Absensi',
+              const SizedBox(height: 4),
+              Text(
+                date,
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                ),
               ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.schedule_outlined),
-                activeIcon: Icon(Icons.schedule),
-                label: 'Jadwal',
+              const SizedBox(height: 8),
+              Text(
+                author,
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: Colors.grey[800],
+                ),
               ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.person_outline),
-                activeIcon: Icon(Icons.person),
-                label: 'Profil',
+              const SizedBox(height: 8),
+              Text(
+                content,
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: targetAudience.map((audience) {
+                  return Chip(
+                    label: Text(
+                      audience == 'all'
+                          ? 'Semua'
+                          : audience == 'teacher'
+                              ? 'Guru'
+                              : audience == 'student'
+                                  ? 'Siswa'
+                                  : audience.replaceFirst('class-', 'Kelas '),
+                      style: GoogleFonts.poppins(fontSize: 12),
+                    ),
+                    backgroundColor: Colors.grey[200],
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text(
+                  'Baca Selengkapnya',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    color: Colors.blue,
+                  ),
+                ),
               ),
             ],
           ),
         ),
       ),
-      floatingActionButton: _currentIndex == 3 ? null : FloatingActionButton(
-        onPressed: () {
-          // Action based on current tab
-          switch (_currentIndex) {
-            case 0: // Announcements tab
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Buat pengumuman baru')),
-              );
-              break;
-            case 1: // Attendance tab
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Rekam absensi baru')),
-              );
-              break;
-            case 2: // Schedule tab
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Lihat detail jadwal')),
-              );
-              break;
-          }
-        },
-        backgroundColor: _currentIndex == 0 
-            ? Colors.green.shade700 
-            : _currentIndex == 1 
-                ? Colors.teal.shade600
-                : Colors.blue.shade700,
-        elevation: 6,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(16)),
-        ),
-        child: Icon(
-          _currentIndex == 0 
-              ? Icons.add_comment
-              : _currentIndex == 1 
-                  ? Icons.edit_calendar
-                  : Icons.calendar_month,
-          color: Colors.white,
-        ),
+    );
+  }
+
+  Widget _buildInfoItem({required IconData icon, required String label, required String value}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.blue),
+          const SizedBox(width: 8),
+          Text(
+            '$label: $value',
+            style: GoogleFonts.poppins(fontSize: 14),
+          ),
+        ],
       ),
     );
   }

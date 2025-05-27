@@ -1,5 +1,3 @@
-import 'package:intl/intl.dart';
-
 class Announcement {
   final String id;
   final String title;
@@ -7,9 +5,9 @@ class Announcement {
   final DateTime publishDate;
   final String authorId;
   final String authorName;
-  final List<String> targetAudience; // "all", "teachers", "students", "class_id"
+  final String type;
+  final List<String> targetAudience;
   final DateTime? expiryDate;
-  final String type; // "urgent", "important", "academic", "event", etc.
 
   Announcement({
     required this.id,
@@ -18,10 +16,14 @@ class Announcement {
     required this.publishDate,
     required this.authorId,
     required this.authorName,
+    required this.type,
     required this.targetAudience,
     this.expiryDate,
-    this.type = 'normal',
   });
+
+  String get date => publishDate.toIso8601String();
+  String get author => authorName;
+
   factory Announcement.fromMap(Map<String, dynamic> map) {
     return Announcement(
       id: map['id'],
@@ -30,13 +32,14 @@ class Announcement {
       publishDate: DateTime.parse(map['publishDate']),
       authorId: map['authorId'],
       authorName: map['authorName'],
+      type: map['type'],
       targetAudience: List<String>.from(map['targetAudience']),
       expiryDate: map['expiryDate'] != null
           ? DateTime.parse(map['expiryDate'])
           : null,
-      type: map['type'] ?? 'normal',
     );
   }
+
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -45,18 +48,9 @@ class Announcement {
       'publishDate': publishDate.toIso8601String(),
       'authorId': authorId,
       'authorName': authorName,
+      'type': type,
       'targetAudience': targetAudience,
       'expiryDate': expiryDate?.toIso8601String(),
-      'type': type,
     };
-  }
-
-  String get formattedPublishDate {
-    return DateFormat('dd MMMM yyyy').format(publishDate);
-  }
-
-  bool get isExpired {
-    if (expiryDate == null) return false;
-    return DateTime.now().isAfter(expiryDate!);
   }
 }

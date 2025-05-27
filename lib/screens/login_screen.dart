@@ -64,7 +64,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     try {
       debugPrint('Attempting to sign in with email: ${_emailController.text}');
       
-      // Use Future.timeout instead of the .timeout method directly on the return value
       final user = await Future.value(_authService.signInWithEmailAndPassword(
         _emailController.text.trim(),
         _passwordController.text.trim(),
@@ -76,8 +75,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       );
       
       if (!mounted) return;
-        debugPrint('Sign in result: ${user != null ? 'Success' : 'Failed'}');
-        if (user == null) {
+      debugPrint('Sign in result: ${user != null ? 'Success' : 'Failed'}');
+      if (user == null) {
         setState(() {
           _errorMessage = 'Unable to log in. Please try again.';
           _isLoading = false;
@@ -587,7 +586,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                     ),
                     const SizedBox(height: 24),
                     
-                    const SizedBox(height: 24),
                     Text(
                       'Demo Accounts',
                       style: GoogleFonts.poppins(

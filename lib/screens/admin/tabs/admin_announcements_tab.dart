@@ -9,11 +9,11 @@ import '../add_announcement_screen.dart';
 import '../../announcement_detail_screen.dart';
 
 class AdminAnnouncementsTab extends StatefulWidget {
-  final User adminUser;
-  
+  final User user; // Ganti adminUser menjadi user untuk konsistensi
+
   const AdminAnnouncementsTab({
     super.key,
-    required this.adminUser,
+    required this.user,
   });
 
   @override
@@ -24,10 +24,10 @@ class _AdminAnnouncementsTabState extends State<AdminAnnouncementsTab> {
   bool _isLoading = true;
   List<Announcement> _announcements = [];
   String? _errorMessage;
-  
+
   final _dateFormat = DateFormat('dd MMM yyyy');
   final _timeFormat = DateFormat('HH:mm');
-  
+
   @override
   void initState() {
     super.initState();
@@ -39,22 +39,31 @@ class _AdminAnnouncementsTabState extends State<AdminAnnouncementsTab> {
       _isLoading = true;
       _errorMessage = null;
     });
-    
+
     try {
       final announcementService = MockAnnouncementService();
       final announcements = await announcementService.getUserAnnouncements(
-        widget.adminUser.id,
+        widget.user.id,
         'admin',
-        null
+        null,
       );
-      
+
+      debugPrint('Total announcements loaded: ${announcements.length}');
+      for (var announcement in announcements) {
+        debugPrint('Announcement: ${announcement.title}, Publish Date: ${announcement.publishDate}, Expiry: ${announcement.expiryDate}');
+      }
+
       if (mounted) {
         setState(() {
           _announcements = announcements;
           _isLoading = false;
+          if (announcements.isEmpty) {
+            _errorMessage = 'No announcements found in the database.';
+          }
         });
       }
     } catch (e) {
+      debugPrint('Error loading announcements: $e');
       if (mounted) {
         setState(() {
           _errorMessage = 'Failed to load announcements: $e';
@@ -82,15 +91,15 @@ class _AdminAnnouncementsTabState extends State<AdminAnnouncementsTab> {
         ],
       ),
     );
-    
+
     if (confirmed != true) return;
-    
+
     setState(() => _isLoading = true);
-    
+
     try {
       final announcementService = MockAnnouncementService();
       final success = await announcementService.deleteAnnouncement(announcement.id);
-      
+
       if (success && mounted) {
         await _loadAnnouncements();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -103,6 +112,7 @@ class _AdminAnnouncementsTabState extends State<AdminAnnouncementsTab> {
         });
       }
     } catch (e) {
+      debugPrint('Error deleting announcement: $e');
       if (mounted) {
         setState(() {
           _errorMessage = 'Failed to delete announcement: $e';
@@ -111,48 +121,49 @@ class _AdminAnnouncementsTabState extends State<AdminAnnouncementsTab> {
       }
     }
   }
-  
+
   Future<void> _editAnnouncement(Announcement announcement) async {
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (context) => EditAnnouncementScreen(
           announcement: announcement,
-          currentUser: widget.adminUser,
+          currentUser: widget.user,
         ),
       ),
     );
-    
-    if (result == true) {
-      await _loadAnnouncements();
-    }
-  }
-  
-  Future<void> _addAnnouncement() async {
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AddAnnouncementScreen(currentUser: widget.adminUser),
-      ),
-    );
-    
+
     if (result == true) {
       await _loadAnnouncements();
     }
   }
 
-  String _getTargetAudienceLabel(List<String> targetAudience) {
+  Future<void> _addAnnouncement() async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AddAnnouncementScreen(currentUser: widget.user),
+      ),
+    );
+
+    if (result == true) {
+      await _loadAnnouncements();
+    }
+  }
+
+  String _getTargetAudienceLabel(List<String>? targetAudience) {
+    if (targetAudience == null || targetAudience.isEmpty) return 'Everyone';
     if (targetAudience.contains('all')) {
       return 'Everyone';
     } else {
       final labels = <String>[];
       if (targetAudience.contains('student')) labels.add('Students');
       if (targetAudience.contains('teacher')) labels.add('Teachers');
-      
-      final classTargets = targetAudience.where(
-        (target) => target.startsWith('class-') || target.startsWith('class_')
-      ).toList();
-      
+
+      final classTargets = targetAudience
+          .where((target) => target.startsWith('class-') || target.startsWith('class_'))
+          .toList();
+
       if (classTargets.isNotEmpty) {
         if (classTargets.length == 1) {
           labels.add(classTargets.first.replaceFirst('class-', 'Class '));
@@ -160,23 +171,19 @@ class _AdminAnnouncementsTabState extends State<AdminAnnouncementsTab> {
           labels.add('${classTargets.length} Classes');
         }
       }
-      
+
       return labels.join(', ');
     }
   }
-  
+
   List<Announcement> get _activeAnnouncements {
     final now = DateTime.now();
-    return _announcements.where((a) => 
-      a.expiryDate == null || a.expiryDate!.isAfter(now)
-    ).toList();
+    return _announcements.where((a) => a.expiryDate == null || a.expiryDate!.isAfter(now)).toList();
   }
-  
+
   List<Announcement> get _expiredAnnouncements {
     final now = DateTime.now();
-    return _announcements.where((a) => 
-      a.expiryDate != null && a.expiryDate!.isBefore(now)
-    ).toList();
+    return _announcements.where((a) => a.expiryDate != null && a.expiryDate!.isBefore(now)).toList();
   }
 
   @override
@@ -184,11 +191,11 @@ class _AdminAnnouncementsTabState extends State<AdminAnnouncementsTab> {
     if (_isLoading) {
       return const Center(child: LoadingIndicator());
     }
-    
+
     if (_errorMessage != null) {
       return _buildErrorView();
     }
-    
+
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -218,7 +225,7 @@ class _AdminAnnouncementsTabState extends State<AdminAnnouncementsTab> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: Colors.blue.shade100,
+                          color: Colors.purple.shade100,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
@@ -226,7 +233,7 @@ class _AdminAnnouncementsTabState extends State<AdminAnnouncementsTab> {
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            color: Colors.blue.shade700,
+                            color: Colors.purple.shade700,
                           ),
                         ),
                       ),
@@ -260,9 +267,9 @@ class _AdminAnnouncementsTabState extends State<AdminAnnouncementsTab> {
                   ),
                 ),
               ],
-              labelColor: Colors.blue.shade700,
+              labelColor: Colors.purple.shade700,
               unselectedLabelColor: Colors.grey.shade600,
-              indicatorColor: Colors.blue.shade700,
+              indicatorColor: Colors.purple.shade700,
               indicatorWeight: 3,
               indicatorSize: TabBarIndicatorSize.tab,
             ),
@@ -274,17 +281,10 @@ class _AdminAnnouncementsTabState extends State<AdminAnnouncementsTab> {
             _buildAnnouncementsView(_expiredAnnouncements, isActive: false),
           ],
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: _addAnnouncement,
-          tooltip: 'Add Announcement',
-          icon: const Icon(Icons.add),
-          label: const Text('New Announcement'),
-          backgroundColor: Colors.blue,
-        ),
       ),
     );
   }
-  
+
   Widget _buildAnnouncementsView(List<Announcement> announcements, {required bool isActive}) {
     if (announcements.isEmpty) {
       return Center(
@@ -294,31 +294,27 @@ class _AdminAnnouncementsTabState extends State<AdminAnnouncementsTab> {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: isActive ? Colors.blue.shade50 : Colors.grey.shade100,
+                color: isActive ? Colors.purple.shade50 : Colors.grey.shade100,
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 isActive ? Icons.campaign_outlined : Icons.history,
                 size: 64,
-                color: isActive ? Colors.blue.shade300 : Colors.grey.shade400,
+                color: isActive ? Colors.purple.shade300 : Colors.grey.shade400,
               ),
             ),
             const SizedBox(height: 24),
             Text(
-              isActive 
-                ? 'No Active Announcements' 
-                : 'No Expired Announcements',
+              isActive ? 'No Active Announcements' : 'No Expired Announcements',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
-                color: isActive ? Colors.blue.shade700 : Colors.grey.shade600,
+                color: isActive ? Colors.purple.shade700 : Colors.grey.shade600,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              isActive 
-                ? 'Create your first announcement' 
-                : 'Expired announcements will appear here',
+              isActive ? 'Create your first announcement' : 'Expired announcements will appear here',
               style: TextStyle(color: Colors.grey[600]),
             ),
             const SizedBox(height: 24),
@@ -328,6 +324,8 @@ class _AdminAnnouncementsTabState extends State<AdminAnnouncementsTab> {
                 icon: const Icon(Icons.add),
                 label: const Text('Create Announcement'),
                 style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.purple,
+                  foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -338,7 +336,7 @@ class _AdminAnnouncementsTabState extends State<AdminAnnouncementsTab> {
         ),
       );
     }
-    
+
     return RefreshIndicator(
       onRefresh: _loadAnnouncements,
       child: ListView.builder(
@@ -347,25 +345,24 @@ class _AdminAnnouncementsTabState extends State<AdminAnnouncementsTab> {
         itemBuilder: (context, index) {
           final announcement = announcements[index];
           return _buildAnnouncementCard(
-            announcement, 
+            announcement,
             isActive: isActive,
           );
         },
       ),
     );
   }
-  
+
   Widget _buildAnnouncementCard(Announcement announcement, {required bool isActive}) {
-    final bool isExpired = announcement.expiryDate != null && 
-      announcement.expiryDate!.isBefore(DateTime.now());
-    
+    final bool isExpired = announcement.expiryDate != null && announcement.expiryDate!.isBefore(DateTime.now());
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
-          color: isExpired ? Colors.grey.shade200 : Colors.blue.shade100,
+          color: isExpired ? Colors.grey.shade200 : Colors.purple.shade100,
           width: 1,
         ),
       ),
@@ -387,7 +384,7 @@ class _AdminAnnouncementsTabState extends State<AdminAnnouncementsTab> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: isExpired ? Colors.grey.shade50 : Colors.blue.shade50,
+                color: isExpired ? Colors.grey.shade50 : Colors.purple.shade50,
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(12),
                   topRight: Radius.circular(12),
@@ -398,7 +395,7 @@ class _AdminAnnouncementsTabState extends State<AdminAnnouncementsTab> {
                   Icon(
                     Icons.campaign,
                     size: 20,
-                    color: isExpired ? Colors.grey.shade600 : Colors.blue.shade700,
+                    color: isExpired ? Colors.grey.shade600 : Colors.purple.shade700,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -442,7 +439,6 @@ class _AdminAnnouncementsTabState extends State<AdminAnnouncementsTab> {
                 ],
               ),
             ),
-            
             Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -453,34 +449,33 @@ class _AdminAnnouncementsTabState extends State<AdminAnnouncementsTab> {
                       Icon(
                         Icons.calendar_today,
                         size: 14,
-                        color: isExpired ? Colors.grey.shade500 : Colors.blue.shade700,
+                        color: isExpired ? Colors.grey.shade500 : Colors.purple.shade700,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         _dateFormat.format(announcement.publishDate),
                         style: TextStyle(
                           fontSize: 12,
-                          color: isExpired ? Colors.grey.shade600 : Colors.blue.shade800,
+                          color: isExpired ? Colors.grey.shade600 : Colors.purple.shade800,
                         ),
                       ),
                       const SizedBox(width: 8),
                       Icon(
                         Icons.access_time,
                         size: 14,
-                        color: isExpired ? Colors.grey.shade500 : Colors.blue.shade700,
+                        color: isExpired ? Colors.grey.shade500 : Colors.purple.shade700,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         _timeFormat.format(announcement.publishDate),
                         style: TextStyle(
                           fontSize: 12,
-                          color: isExpired ? Colors.grey.shade600 : Colors.blue.shade800,
+                          color: isExpired ? Colors.grey.shade600 : Colors.purple.shade800,
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  
                   Text(
                     announcement.content,
                     maxLines: 2,
@@ -490,25 +485,16 @@ class _AdminAnnouncementsTabState extends State<AdminAnnouncementsTab> {
                       color: isExpired ? Colors.grey.shade600 : Colors.black87,
                     ),
                   ),
-                  
                   const SizedBox(height: 16),
-                  
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8, 
-                          vertical: 4,
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: isExpired 
-                              ? Colors.grey.shade100 
-                              : Colors.amber.shade50,
+                          color: isExpired ? Colors.grey.shade100 : Colors.amber.shade50,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: isExpired 
-                                ? Colors.grey.shade300 
-                                : Colors.amber.shade200,
+                            color: isExpired ? Colors.grey.shade300 : Colors.amber.shade200,
                           ),
                         ),
                         child: Row(
@@ -517,40 +503,27 @@ class _AdminAnnouncementsTabState extends State<AdminAnnouncementsTab> {
                             Icon(
                               Icons.people,
                               size: 12,
-                              color: isExpired 
-                                  ? Colors.grey.shade600 
-                                  : Colors.amber.shade700,
+                              color: isExpired ? Colors.grey.shade600 : Colors.amber.shade700,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               _getTargetAudienceLabel(announcement.targetAudience),
                               style: TextStyle(
                                 fontSize: 12,
-                                color: isExpired 
-                                    ? Colors.grey.shade600 
-                                    : Colors.amber.shade800,
+                                color: isExpired ? Colors.grey.shade600 : Colors.amber.shade800,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      
                       const SizedBox(width: 8),
-                      
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8, 
-                          vertical: 4,
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: isExpired 
-                              ? Colors.grey.shade100 
-                              : Colors.green.shade50,
+                          color: isExpired ? Colors.grey.shade100 : Colors.green.shade50,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: isExpired 
-                                ? Colors.grey.shade300 
-                                : Colors.green.shade200,
+                            color: isExpired ? Colors.grey.shade300 : Colors.green.shade200,
                           ),
                         ),
                         child: Row(
@@ -559,41 +532,28 @@ class _AdminAnnouncementsTabState extends State<AdminAnnouncementsTab> {
                             Icon(
                               Icons.person,
                               size: 12,
-                              color: isExpired 
-                                  ? Colors.grey.shade600 
-                                  : Colors.green.shade700,
+                              color: isExpired ? Colors.grey.shade600 : Colors.green.shade700,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               announcement.authorName,
                               style: TextStyle(
                                 fontSize: 12,
-                                color: isExpired 
-                                    ? Colors.grey.shade600 
-                                    : Colors.green.shade800,
+                                color: isExpired ? Colors.grey.shade600 : Colors.green.shade800,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      
                       const Spacer(),
-                      
                       if (announcement.expiryDate != null)
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8, 
-                            vertical: 4,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: isExpired 
-                                ? Colors.grey.shade100 
-                                : Colors.red.shade50,
+                            color: isExpired ? Colors.grey.shade100 : Colors.red.shade50,
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color: isExpired 
-                                  ? Colors.grey.shade300 
-                                  : Colors.red.shade200,
+                              color: isExpired ? Colors.grey.shade300 : Colors.red.shade200,
                             ),
                           ),
                           child: Row(
@@ -602,20 +562,16 @@ class _AdminAnnouncementsTabState extends State<AdminAnnouncementsTab> {
                               Icon(
                                 isExpired ? Icons.event_busy : Icons.event_available,
                                 size: 12,
-                                color: isExpired 
-                                    ? Colors.grey.shade600 
-                                    : Colors.red.shade700,
+                                color: isExpired ? Colors.grey.shade600 : Colors.red.shade700,
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                isExpired 
-                                    ? 'Expired' 
+                                isExpired
+                                    ? 'Expired'
                                     : 'Expires ${_dateFormat.format(announcement.expiryDate!)}',
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: isExpired 
-                                      ? Colors.grey.shade600 
-                                      : Colors.red.shade800,
+                                  color: isExpired ? Colors.grey.shade600 : Colors.red.shade800,
                                 ),
                               ),
                             ],
@@ -626,12 +582,10 @@ class _AdminAnnouncementsTabState extends State<AdminAnnouncementsTab> {
                 ],
               ),
             ),
-            
             Divider(
               height: 1,
-              color: isExpired ? Colors.grey.shade200 : Colors.blue.shade100,
+              color: isExpired ? Colors.grey.shade200 : Colors.purple.shade100,
             ),
-            
             Padding(
               padding: const EdgeInsets.all(8),
               child: Row(
@@ -651,12 +605,12 @@ class _AdminAnnouncementsTabState extends State<AdminAnnouncementsTab> {
                     icon: Icon(
                       Icons.visibility,
                       size: 18,
-                      color: isExpired ? Colors.grey.shade600 : Colors.blue.shade700,
+                      color: isExpired ? Colors.grey.shade600 : Colors.purple.shade700,
                     ),
                     label: Text(
                       'View',
                       style: TextStyle(
-                        color: isExpired ? Colors.grey.shade600 : Colors.blue.shade700,
+                        color: isExpired ? Colors.grey.shade600 : Colors.purple.shade700,
                       ),
                     ),
                     style: TextButton.styleFrom(
@@ -745,7 +699,7 @@ class _AdminAnnouncementsTabState extends State<AdminAnnouncementsTab> {
             ),
             const SizedBox(height: 8),
             Text(
-              _errorMessage!,
+              _errorMessage ?? 'Unknown error occurred',
               style: const TextStyle(color: Colors.black87),
               textAlign: TextAlign.center,
             ),

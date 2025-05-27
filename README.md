@@ -1,4 +1,4 @@
-# sman1_application
+# sma_girsip
 
 A new Flutter project.
 

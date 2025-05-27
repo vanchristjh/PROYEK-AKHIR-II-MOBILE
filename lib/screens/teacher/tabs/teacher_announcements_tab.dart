@@ -148,7 +148,6 @@ class _TeacherAnnouncementsTabState extends State<TeacherAnnouncementsTab> {
   }
   
   void _showAnnouncementDetails(Announcement announcement) {
-    // Navigate to the detailed announcement screen
     Navigator.push(
       context,
       MaterialPageRoute(

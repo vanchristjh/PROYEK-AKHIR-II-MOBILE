@@ -23,16 +23,13 @@ class _TeacherAttendanceTabState extends State<TeacherAttendanceTab> {
   bool _isLoading = false;
   String? _error;
   
-  // Calendar variables
   DateTime _focusedDay = DateTime.now();
   DateTime _selectedDay = DateTime.now();
   CalendarFormat _calendarFormat = CalendarFormat.month;
   
-  // Class selection
   final List<String> _classes = ['class-10a', 'class-10b', 'class-11a', 'class-11b'];
   String _selectedClass = 'class-10a';
   
-  // Attendance records for the selected class on the selected day
   List<Attendance> _classAttendance = [];
   
   @override
@@ -48,7 +45,6 @@ class _TeacherAttendanceTabState extends State<TeacherAttendanceTab> {
         _error = null;
       });
       
-      // Load attendance for the selected class on the selected date
       final attendance = await _attendanceService.getClassAttendance(
         _selectedClass,
         _selectedDay,
@@ -70,7 +66,6 @@ class _TeacherAttendanceTabState extends State<TeacherAttendanceTab> {
     }
   }
   
-  // Update attendance status for a specific student
   Future<void> _updateAttendanceStatus(Attendance attendance, AttendanceStatus newStatus) async {
     try {
       final updatedAttendance = Attendance(
@@ -118,7 +113,6 @@ class _TeacherAttendanceTabState extends State<TeacherAttendanceTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Class selection dropdown
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16.0),
@@ -152,7 +146,6 @@ class _TeacherAttendanceTabState extends State<TeacherAttendanceTab> {
           ),
           const SizedBox(height: 16),
           
-          // Calendar
           TableCalendar(
             firstDay: DateTime.utc(2023, 1, 1),
             lastDay: DateTime.utc(2030, 12, 31),
@@ -174,7 +167,6 @@ class _TeacherAttendanceTabState extends State<TeacherAttendanceTab> {
           ),
           const SizedBox(height: 16),
           
-          // Selected day title
           Text(
             'Absensi Tanggal: ${DateFormat('dd MMMM yyyy').format(_selectedDay)}',
             style: const TextStyle(
@@ -184,7 +176,6 @@ class _TeacherAttendanceTabState extends State<TeacherAttendanceTab> {
           ),
           const SizedBox(height: 8),
           
-          // Students attendance list
           Expanded(
             child: _isLoading
                 ? const Center(child: LoadingIndicator())
